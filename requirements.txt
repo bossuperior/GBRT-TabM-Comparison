@@ -1,2 +1,4 @@
 numpy
 gdown
+pytorch
+tabm
