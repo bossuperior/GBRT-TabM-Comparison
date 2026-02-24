@@ -29,6 +29,7 @@ pip install -r requirements.txt
 python scripts/setup_california_data.py
 ```
 สคริปต์นี้จะดำเนินการดังนี้โดยอัตโนมัติ:
+
 -ดาวน์โหลดไฟล์ california_tabm.zip จาก Google Drive (ถ้ายังไม่มีในเครื่อง)
 -แตกไฟล์ไปยังโฟลเดอร์ data/california/
 -ตรวจสอบว่าไฟล์ที่จำเป็นครบถ้วน
