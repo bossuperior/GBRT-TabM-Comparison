@@ -22,11 +22,12 @@
 #### 1) ติดตั้ง dependency ที่จำเป็น
 ```bash
 pip install -r requirements.txt
-
+```
 #### 2) ดาวน์โหลดและแตกไฟล์ Dataset
 ที่ root ของโปรเจกต์ ให้รันคำสั่ง:
+```bash
 python scripts/setup_california_data.py
-
+```
 สคริปต์นี้จะ:
 ดาวน์โหลดไฟล์ california_tabm.zip จาก Google Drive (ถ้ายังไม่มีในเครื่อง)
 แตกไฟล์ไปยังโฟลเดอร์ data/california/
