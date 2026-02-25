@@ -3,6 +3,7 @@ import torch.nn as nn
 import numpy as np
 from sklearn.metrics import mean_squared_error, r2_score
 from gbrt_model import FlexibleMLP
+from pathlib import Path
 
 # ==========================================
 # 1. ใส่ค่าที่ดีที่สุดที่ได้จาก gbrt_tuner.py ลงตรงนี้
@@ -15,16 +16,17 @@ PATIENCE = 20  # จำนวนรอบที่ยอมให้ Val Loss �
 # ==========================================
 
 # 2. โหลดข้อมูลครบทั้ง 3 ชุด (Train, Val, Test)
-data_dir = "../data/california"  # ปรับ Path ให้ชี้ไปที่โฟลเดอร์ data
-X_train = torch.tensor(np.load(f"{data_dir}/X_num_train.npy")).float()
-y_train = torch.tensor(np.load(f"{data_dir}/Y_train.npy")).float().view(-1, 1)
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_DIR = BASE_DIR / "data" / "california" # ปรับ Path ให้ชี้ไปที่โฟลเดอร์ data
+X_train = torch.tensor(np.load(DATA_DIR / "X_num_train.npy")).float()
+y_train = torch.tensor(np.load(DATA_DIR / "Y_train.npy")).float().view(-1, 1)
 
-X_val = torch.tensor(np.load(f"{data_dir}/X_num_val.npy")).float()
-y_val = torch.tensor(np.load(f"{data_dir}/Y_val.npy")).float().view(-1, 1)
+X_val = torch.tensor(np.load(DATA_DIR / "X_num_val.npy")).float()
+y_val = torch.tensor(np.load(DATA_DIR / "Y_val.npy")).float().view(-1, 1)
 
 # **สำคัญมาก** ต้องใช้ Test Set ในการวัดผลเปรียบเทียบกับ TabM
-X_test = torch.tensor(np.load(f"{data_dir}/X_num_test.npy")).float()
-y_test_np = np.load(f"{data_dir}/Y_test.npy")  # เก็บเป็น numpy ไว้คำนวณตอนจบ
+X_test = torch.tensor(np.load(DATA_DIR / "X_num_test.npy")).float()
+y_test_np = np.load(DATA_DIR / "Y_test.npy")  # เก็บเป็น numpy ไว้คำนวณตอนจบ
 
 # 3. สร้างโมเดลและเครื่องมือ
 model = FlexibleMLP(n_layers=BEST_LAYERS, n_neurons=BEST_NEURONS)
