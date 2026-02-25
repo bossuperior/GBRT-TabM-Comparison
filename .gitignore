@@ -210,7 +210,3 @@ __marimo__/
 .DS_Store
 california_tabm.zip
 *.zip
-*.npy
-data/
-data/*
-

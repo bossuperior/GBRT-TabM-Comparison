@@ -10,25 +10,8 @@ REQUIRED_FILES = [
     "info.json", "READY",
 ]
 
-FILE_ID = "16fJ8lTkECCSf101RnOtd_GfUxz87yLxj"
-
-
 def main():
     project_root = Path(__file__).resolve().parents[1]
-    zip_path = project_root / "california_tabm.zip"
-
-    # ถ้าไม่มี zip ให้โหลดจาก Google Drive
-    if not zip_path.exists():
-        url = f"https://drive.google.com/uc?id={FILE_ID}"
-        print("[Downloading] California zip from Google Drive...")
-        gdown.download(url, str(zip_path), quiet=False)
-
-    if not zip_path.exists():
-        raise FileNotFoundError(f"Download failed: {zip_path} not found")
-
-    # แตก zip ลง root (เพราะใน zip มี path data/california/ อยู่แล้ว)
-    with zipfile.ZipFile(zip_path, "r") as zf:
-        zf.extractall(project_root)
 
     data_dir = project_root / "data" / "california"
     if not data_dir.exists():
