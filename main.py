@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from TabM.tabm_reference import TabM
-from utils import get_california_tensors
+from data_utils import get_california_tensors
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"--- [Status] Using Device: {device} ---", flush=True)

@@ -4,7 +4,7 @@ import numpy as np
 import torch
 
 
-def load_california_tabm(data_dir: str = "data/california"):
+def get_california_data(data_dir: str = "data/california"):
     data_path = Path(data_dir)
     if not data_path.exists():
         raise FileNotFoundError(f"Not found: {data_path}")
@@ -30,7 +30,7 @@ def load_california_tabm(data_dir: str = "data/california"):
 
 # เพิ่มฟังก์ชันนี้เพื่อใช้ใน main.py
 def get_california_tensors(data_dir: str = "data/california"):
-    (X_tr, y_tr), (X_va, y_va), (X_te, y_te), info = load_california_tabm(data_dir)
+    (X_tr, y_tr), (X_va, y_va), (X_te, y_te), info = get_california_data(data_dir)
 
     # แปลงเป็น FloatTensor และเปลี่ยนรูปทรง y ให้เป็น (N, 1)
     train_data = (torch.FloatTensor(X_tr), torch.FloatTensor(y_tr).unsqueeze(1))

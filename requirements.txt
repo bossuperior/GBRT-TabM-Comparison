@@ -1,4 +1,8 @@
 numpy
 gdown
-pytorch
+torch
+torchvision
+torchaudio
 tabm
+scikit-optimize
+scikit-learn
