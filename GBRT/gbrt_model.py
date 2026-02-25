@@ -1,19 +1,20 @@
 import torch.nn as nn
 
-
 class FlexibleMLP(nn.Module):
-    def __init__(self, n_layers, n_neurons, input_dim=8):  # California Housing มี 8 features
+    # เพิ่ม dropout_rate มารับค่า
+    def __init__(self, n_layers, n_neurons, dropout_rate=0.0, input_dim=8):
         super().__init__()
         layers = []
         in_dim = input_dim
 
-        # สร้าง Hidden Layers ตามจำนวนที่ GBRT แนะนำ
         for _ in range(n_layers):
             layers.append(nn.Linear(in_dim, n_neurons))
             layers.append(nn.ReLU())
+            # แทรก Dropout เข้าไปหลัง Activation Function
+            layers.append(nn.Dropout(p=dropout_rate))
             in_dim = n_neurons
 
-        layers.append(nn.Linear(in_dim, 1))  # Output 1 ตัวสำหรับพยากรณ์ราคาบ้าน
+        layers.append(nn.Linear(in_dim, 1))
         self.network = nn.Sequential(*layers)
 
     def forward(self, x):
