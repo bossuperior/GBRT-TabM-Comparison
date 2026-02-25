@@ -1,0 +1,3 @@
+Model: MLP tuned by GBRT
+Test RMSE: 0.6882
+Test R2: 0.6368
