@@ -30,8 +30,6 @@ python scripts/setup_california_data.py
 ```
 สคริปต์นี้จะดำเนินการดังนี้โดยอัตโนมัติ:
 
-- ดาวน์โหลดไฟล์ `california_tabm.zip` จาก Google Drive (ถ้ายังไม่มีในเครื่อง)
-- แตกไฟล์ไปยังโฟลเดอร์ `data/california/`
 - ตรวจสอบว่าไฟล์ที่จำเป็นครบถ้วน
 - ตรวจสอบความถูกต้องของ shape (sanity check)
 
@@ -40,6 +38,6 @@ python scripts/setup_california_data.py
 [PASS] sanity checks
 
 #### 3) วิธีโหลด Dataset เข้าโมเดล
-ให้ใช้ loader ที่เตรียมไว้ใน utils.py
+ให้ใช้ loader ที่เตรียมไว้ใน data_utils.py
 
   หมายเหตุ: Dataset นี้ใช้ split เดียวกับงานวิจัยของ TabM เพื่อให้การ Benchmark มีความถูกต้องและสามารถเปรียบเทียบโมเดลได้อย่างเป็นมาตรฐานเดียวกัน

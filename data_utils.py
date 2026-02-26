@@ -28,7 +28,7 @@ def get_california_data(data_dir: str = "data/california"):
     return (X_train, y_train), (X_val, y_val), (X_test, y_test), info
 
 
-# เพิ่มฟังก์ชันนี้เพื่อใช้ใน main.py
+# เพิ่มฟังก์ชันนี้เพื่อใช้ใน tabm_train.py
 def get_california_tensors(data_dir: str = "data/california"):
     (X_tr, y_tr), (X_va, y_va), (X_te, y_te), info = get_california_data(data_dir)
 

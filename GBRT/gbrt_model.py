@@ -1,17 +1,16 @@
 import torch.nn as nn
 
-class FlexibleMLP(nn.Module):
-    # เพิ่ม dropout_rate มารับค่า
-    def __init__(self, n_layers, n_neurons, dropout_rate=0.0, input_dim=8):
-        super().__init__()
+class GBRTModel(nn.Module):
+    def __init__(self, input_dim, n_layers=2, n_neurons=64, dropout_rate=0.1):
+        super(GBRTModel, self). __init__()
         layers = []
         in_dim = input_dim
 
+        # สร้างเลเยอร์ตามที่ GBRT Tuner สุ่มมาให้
         for _ in range(n_layers):
             layers.append(nn.Linear(in_dim, n_neurons))
             layers.append(nn.ReLU())
-            # แทรก Dropout เข้าไปหลัง Activation Function
-            layers.append(nn.Dropout(p=dropout_rate))
+            layers.append(nn.Dropout(dropout_rate))
             in_dim = n_neurons
 
         layers.append(nn.Linear(in_dim, 1))

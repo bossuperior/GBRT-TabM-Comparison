@@ -6,3 +6,5 @@ torchaudio
 tabm
 scikit-optimize
 scikit-learn
+optuna
+joblib

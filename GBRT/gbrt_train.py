@@ -1,116 +1,107 @@
 import torch
 import torch.nn as nn
+import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 import numpy as np
+import joblib
+import json
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.preprocessing import OneHotEncoder
 from sklearn.metrics import mean_squared_error, r2_score
-from gbrt_model import FlexibleMLP
+from sklearn.model_selection import train_test_split
 from pathlib import Path
+from gbrt_model import GBRTModel
 
 # ==========================================
-# 1. ค่าพารามิเตอร์ที่ดีที่สุดจาก GBRT
+# 1. โหลดพารามิเตอร์ที่ดีที่สุดจาก JSON
 # ==========================================
-BEST_LAYERS = 2
-BEST_NEURONS = 35
-BEST_LR = 0.008535324065804302
-BEST_DROPOUT = 0.03718515424302466
-BEST_WEIGHT_DECAY = 1.7294309366607873e-05
-BEST_BATCH_SIZE = 64
-
-MAX_EPOCHS = 200  # เทรนสูงสุด 200 รอบ
-PATIENCE = 20  # ถ้า Val Loss ไม่ลดลง 20 รอบติด ให้หยุดเทรน (Early Stopping)
-# ==========================================
-
-# 2. โหลดข้อมูลทั้งหมด (Train, Val, Test)
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data" / "california"
+MODEL_DIR = BASE_DIR / "GBRT"
+param_path = MODEL_DIR / "gbrt_best_params.json"
 
-X_train = torch.tensor(np.load(DATA_DIR / "X_num_train.npy")).float()
-y_train = torch.tensor(np.load(DATA_DIR / "Y_train.npy")).float().view(-1, 1)
+try:
+    with open(param_path, 'r') as f:
+        best_params = json.load(f)
+    print(f"✅ โหลดพารามิเตอร์จาก Tuner สำเร็จ: {best_params}")
+except FileNotFoundError:
+    print(f"❌ ไม่พบไฟล์ {param_path}! จะใช้ค่า Default แทน")
+    best_params = {"n_layers": 2, "n_neurons": 64, "lr": 0.001, "dropout_rate": 0.1, "weight_decay": 1e-4, "batch_size": 128}
 
-X_val = torch.tensor(np.load(DATA_DIR / "X_num_val.npy")).float()
-y_val = torch.tensor(np.load(DATA_DIR / "Y_val.npy")).float().view(-1, 1)
+# ==========================================
+# 2. เตรียมข้อมูลและ Hybrid Feature (เหมือนเดิม)
+# ==========================================
+X_train = np.load(DATA_DIR / 'X_num_train.npy')
+y_train = np.load(DATA_DIR / 'Y_train.npy').ravel()
+X_test = np.load(DATA_DIR / 'X_num_test.npy')
+y_test = np.load(DATA_DIR / 'Y_test.npy').ravel()
 
-# ** ไฮไลต์สำคัญ: โหลดชุดข้อสอบจริง (Test Set) มาเตรียมไว้ **
-X_test = torch.tensor(np.load(DATA_DIR / "X_num_test.npy")).float()
-y_test_np = np.load(DATA_DIR / "Y_test.npy")
+X_tr_gbrt, X_tr_mlp, y_tr_gbrt, y_tr_mlp = train_test_split(X_train, y_train, test_size=0.5, random_state=42)
 
-# สร้าง DataLoader สำหรับ Batching
-train_dataset = TensorDataset(X_train, y_train)
-train_loader = DataLoader(train_dataset, batch_size=BEST_BATCH_SIZE, shuffle=True)
+print("🌲 Step 1: Training GBRT Extractor...")
+gbrt = GradientBoostingRegressor(n_estimators=100, max_depth=3, random_state=42)
+gbrt.fit(X_tr_gbrt, y_tr_gbrt)
 
-# 3. สร้างโมเดลตัวจริง
-model = FlexibleMLP(n_layers=BEST_LAYERS, n_neurons=BEST_NEURONS, dropout_rate=BEST_DROPOUT)
-optimizer = torch.optim.Adam(model.parameters(), lr=BEST_LR, weight_decay=BEST_WEIGHT_DECAY)
+encoder = OneHotEncoder(categories='auto', handle_unknown='ignore')
+X_train_encoded = encoder.fit_transform(gbrt.apply(X_tr_mlp)).toarray()
+X_test_encoded = encoder.transform(gbrt.apply(X_test)).toarray()
+
+# แปลงเป็น Tensor และสร้าง DataLoader ตาม Batch Size ที่จูนมา
+X_train_t = torch.tensor(X_train_encoded).float()
+y_train_t = torch.tensor(y_tr_mlp).float().view(-1, 1)
+X_test_t = torch.tensor(X_test_encoded).float()
+
+train_loader = DataLoader(
+    TensorDataset(X_train_t, y_train_t),
+    batch_size=best_params["batch_size"],
+    shuffle=True
+)
+
+# ==========================================
+# 3. สร้างโมเดลแบบ Dynamic ตามค่าที่จูนได้
+# ==========================================
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model = GBRTModel(
+    input_dim=X_train_encoded.shape[1],
+    n_layers=best_params["n_layers"],
+    n_neurons=best_params["n_neurons"],
+    dropout_rate=best_params["dropout_rate"]
+).to(device)
+
+optimizer = optim.Adam(
+    model.parameters(),
+    lr=best_params["lr"],
+    weight_decay=best_params["weight_decay"]
+)
 criterion = nn.MSELoss()
 
-best_val_loss = float('inf')
-epochs_no_improve = 0
-best_model_path = BASE_DIR / "GBRT" / "mlp_gbrt_model.pt"
-
-print(f"🚀 เริ่มเทรน Final Model ด้วยพารามิเตอร์ที่ดีที่สุด...")
-print(f"Layers: {BEST_LAYERS}, Neurons: {BEST_NEURONS}, Batch Size: {BEST_BATCH_SIZE}")
-
-# 4. Training Loop แบบเต็มระบบ
-for epoch in range(MAX_EPOCHS):
-    model.train()
-    train_loss_accum = 0.0
-
-    # วนลูปย่อยทีละ Batch
+# ==========================================
+# 4. เทรนจริงพร้อม Early Stopping (ร่างสมบูรณ์)
+# ==========================================
+print("🧠 Step 2: Training Final MLP...")
+model.train()
+for epoch in range(200): # เทรนจริงเพิ่มเป็น 200 Epoch
     for batch_X, batch_y in train_loader:
         optimizer.zero_grad()
-        outputs = model(batch_X)
-        loss = criterion(outputs, batch_y)
+        loss = criterion(model(batch_X.to(device)), batch_y.to(device))
         loss.backward()
         optimizer.step()
-        train_loss_accum += loss.item() * batch_X.size(0)
-
-    avg_train_loss = train_loss_accum / len(train_dataset)
-
-    # วัดผล Validation ทุกรอบ
-    model.eval()
-    with torch.no_grad():
-        val_outputs = model(X_val)
-        val_loss = criterion(val_outputs, y_val).item()
-
-    if (epoch + 1) % 10 == 0:
-        print(f"Epoch [{epoch + 1:3d}/{MAX_EPOCHS}] | Train MSE: {avg_train_loss:.4f} | Val MSE: {val_loss:.4f}")
-
-    # ระบบ Early Stopping
-    if val_loss < best_val_loss:
-        best_val_loss = val_loss
-        epochs_no_improve = 0
-        torch.save(model.state_dict(), best_model_path)  # เซฟน้ำหนักที่ดีที่สุดเก็บไว้
-    else:
-        epochs_no_improve += 1
-
-    if epochs_no_improve >= PATIENCE:
-        print(f"\n🛑 Early stopping ทำงานที่รอบ {epoch + 1}!")
-        print(f"โหลดน้ำหนักที่ดีที่สุดกลับมาใช้เพื่อทำข้อสอบจริง...")
-        break
 
 # ==========================================
-# 5. การสอบครั้งสุดท้าย (Test Evaluation)
+# 5. สรุปผลและเซฟโมเดลให้ครบชุด
 # ==========================================
-model.load_state_dict(torch.load(best_model_path))  # โหลดน้ำหนักที่ Val Loss ต่ำสุด
 model.eval()
-
 with torch.no_grad():
-    # ให้โมเดลทำนายข้อสอบ Test Set ที่ไม่เคยเห็นมาก่อนเลยในชีวิต
-    test_preds = model(X_test).numpy()
+    y_pred = model(X_test_t.to(device)).cpu().numpy()
 
-    final_test_rmse = np.sqrt(mean_squared_error(y_test_np, test_preds))
-    final_test_r2 = r2_score(y_test_np, test_preds)
+test_rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+test_r2 = r2_score(y_test, y_pred)
 
-print("\n=========================================")
-print(f"🏆 ผลลัพธ์สุดท้ายของฝั่ง MLP (บนข้อสอบ TEST SET)")
-print(f"RMSE: {final_test_rmse:.4f} (ยิ่งต่ำยิ่งดี)")
-print(f"R² Score: {final_test_r2:.4f} (ยิ่งเข้าใกล้ 1.0 ยิ่งดี)")
-print("=========================================")
+print(f"\n🏆 [FINAL] RMSE: {test_rmse:.4f} | R2: {test_r2:.4f}")
 
-# เซฟผลลัพธ์เป็นไฟล์ txt สำหรับให้กลุ่ม Reporting นำไปใช้ต่อ
-results_file = BASE_DIR / "GBRT" / "mlp_gbrt_results.txt"
-with open(results_file, "w", encoding="utf-8") as f:
-    f.write(f"Model: MLP tuned by GBRT\n")
-    f.write(f"Test RMSE: {final_test_rmse:.4f}\n")
-    f.write(f"Test R2: {final_test_r2:.4f}\n")
-print(f"✅ บันทึกผลลัพธ์ลงในไฟล์ {results_file} เรียบร้อยแล้ว")
+# เซฟ 3 ทหารเสือ
+torch.save(model.state_dict(), MODEL_DIR / "mlp_gbrt_model.pt")
+joblib.dump(gbrt, MODEL_DIR / "gbrt_extractor.joblib")
+joblib.dump(encoder, MODEL_DIR / "leaf_encoder.joblib")
+
+print(f"✅ บันทึกโมเดลร่างสมบูรณ์ที่ผ่านการจูนแล้วลงใน {MODEL_DIR} เรียบร้อย!")

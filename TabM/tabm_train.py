@@ -55,3 +55,8 @@ with torch.no_grad():
     val_mse = criterion(final_pred, y_val)
 
 print(f"\nFINAL TABM VALIDATION MSE: {val_mse.item():.6f}")
+
+# บันทึกโมเดล TabM ที่เทรนเสร็จแล้ว
+model_path = "tabm_california_model.pt"
+torch.save(model.state_dict(), model_path)
+print(f"Model saved successfully to {model_path}")

@@ -1,62 +1,85 @@
-from skopt import forest_minimize
-from skopt.space import Real, Integer, Categorical
-from skopt.callbacks import EarlyStopper
 import numpy as np
-from sklearn.metrics import mean_squared_error
-from gbrt_model import FlexibleMLP
-from pathlib import Path
+import json
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, TensorDataset
+import sklearn.base
+import skopt.optimizer.base
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import train_test_split
+from skopt import gbrt_minimize
+from skopt.space import Real, Integer, Categorical
+from pathlib import Path
+from gbrt_model import GBRTModel
+from skopt.learning import GradientBoostingQuantileRegressor
 
-#ใส่เงื่อนไขจำนวนรอบและ RMSE ในการจูน
 MAX_CALLS = 50
-TARGET_RMSE = 0.65
+TARGET_RMSE = 0.55
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data" / "california"
 
-X_train = np.load(DATA_DIR / "X_num_train.npy")
-y_train = np.load(DATA_DIR / "Y_train.npy")
+X_train_full = np.load(DATA_DIR / "X_num_train.npy")
+y_train_full = np.load(DATA_DIR / "Y_train.npy").ravel()
 X_val = np.load(DATA_DIR / "X_num_val.npy")
-y_val = np.load(DATA_DIR / "Y_val.npy")
+y_val = np.load(DATA_DIR / "Y_val.npy").ravel()
 
-# --- แปลงข้อมูลเป็น Tensor เอาไว้ล่วงหน้า ---
-X_train_t = torch.tensor(X_train).float()
-y_train_t = torch.tensor(y_train).float().view(-1, 1)
-X_val_t = torch.tensor(X_val).float()
+# แบ่งส่วน Hybrid เพื่อป้องกัน Data Leakage
+X_tr_gbrt, X_tr_mlp, y_tr_gbrt, y_tr_mlp = train_test_split(X_train_full, y_train_full, test_size=0.5, random_state=42)
 
-# ==========================================
-# 1. สร้าง Dataset เตรียมไว้ให้ DataLoader
-# ==========================================
-train_dataset = TensorDataset(X_train_t, y_train_t)
+print("🌲 กำลังเตรียม Feature Extraction สำหรับ Hybrid MLP...")
+gbrt_ext = GradientBoostingRegressor(n_estimators=100, max_depth=3, random_state=42)
+gbrt_ext.fit(X_tr_gbrt, y_tr_gbrt)
+
+enc = OneHotEncoder(categories='auto', handle_unknown='ignore')
+X_tr_encoded = enc.fit_transform(gbrt_ext.apply(X_tr_mlp)).toarray()
+X_val_encoded = enc.transform(gbrt_ext.apply(X_val)).toarray()
+
+X_tr_t = torch.tensor(X_tr_encoded).float()
+y_tr_t = torch.tensor(y_tr_mlp).float().view(-1, 1)
+X_val_t = torch.tensor(X_val_encoded).float()
+
+
+class FixedGBQR(GradientBoostingQuantileRegressor):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._estimator_type = "regressor"
+gbrt_base = FixedGBQR(
+    base_estimator=GradientBoostingRegressor(n_estimators=30, loss='quantile')
+)
+
+def absolute_bypass(estimator):
+    return True
+skopt.optimizer.optimizer.is_regressor = absolute_bypass
+skopt.optimizer.base.is_regressor = absolute_bypass
+sklearn.base.is_regressor = absolute_bypass
 
 iteration_count = 0
-
-
 def objective(params):
     global iteration_count
     iteration_count += 1
-
-    # 2. แตกตัวแปร 6 ตัว (รับ batch_size เพิ่มเข้ามา)
     n_layers, n_neurons, lr, dropout_rate, weight_decay, batch_size = params
 
-    # 3. สร้าง DataLoader เพื่อสับข้อมูลเป็นก้อนๆ ตามขนาด batch_size ที่ GBRT สุ่มมา
-    train_loader = DataLoader(train_dataset, batch_size=int(batch_size), shuffle=True)
+    from torch.utils.data import DataLoader, TensorDataset
+    loader = DataLoader(TensorDataset(X_tr_t, y_tr_t), batch_size=int(batch_size), shuffle=True)
 
-    model = FlexibleMLP(n_layers=n_layers, n_neurons=n_neurons, dropout_rate=dropout_rate)
+    # สร้างโมเดล Linear Layer ตามที่โจทย์กำหนด
+    model = GBRTModel(
+        input_dim=X_tr_encoded.shape[1],
+        n_layers=n_layers,
+        n_neurons=n_neurons,
+        dropout_rate=dropout_rate
+    )
+
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     criterion = nn.MSELoss()
 
     model.train()
-    for epoch in range(20):
-        # ==========================================
-        # 4. วนลูปย่อยเพื่อดึงข้อมูลทีละ Batch มาเทรน
-        # ==========================================
-        for batch_X, batch_y in train_loader:
+    for _ in range(20):
+        for b_X, b_y in loader:
             optimizer.zero_grad()
-            outputs = model(batch_X)
-            loss = criterion(outputs, batch_y)
+            loss = criterion(model(b_X), b_y)
             loss.backward()
             optimizer.step()
 
@@ -66,39 +89,31 @@ def objective(params):
         rmse = np.sqrt(mean_squared_error(y_val, preds))
 
     print(
-        f"⏳ รอบ {iteration_count}: layers={n_layers}, neurons={n_neurons}, lr={lr:.5f}, drop={dropout_rate:.2f}, wd={weight_decay:.5f}, batch={batch_size} -> RMSE: {rmse:.4f}")
+        f"⏳ รอบ {iteration_count:2d}: layers={n_layers}, neurons={n_neurons:3d}, lr={lr:.5f}, batch={batch_size:3d} -> RMSE: {rmse:.4f}")
     return rmse
 
-
-class TargetScoreStopper(EarlyStopper):
-    def __init__(self, target_score):
-        self.target_score = target_score
-
-    def _criterion(self, result):
-        if result.fun <= self.target_score:
-            print(
-                f"\n🎉 หยุดการจูนก่อนกำหนด! พบค่า RMSE ({result.fun:.4f}) ซึ่งผ่านเกณฑ์เป้าหมาย ({self.target_score}) แล้ว!")
-            return True
-        return False
-
-
-# ==========================================
-# 5. กำหนดขอบเขตการค้นหา (เพิ่ม Batch Size แบบเลขฐาน 2)
-# ==========================================
+# --- Search Space & Tuning ---
 search_space = [
     Integer(1, 5, name='n_layers'),
-    Integer(32, 256, name='n_neurons'),
-    Real(1e-4, 1e-2, prior='log-uniform', name='lr'),
+    Integer(64, 512, name='n_neurons'),
+    Real(1e-4, 5e-3, prior='log-uniform', name='lr'),
     Real(0.0, 0.5, name='dropout_rate'),
     Real(1e-5, 1e-3, prior='log-uniform', name='weight_decay'),
-    Categorical([32, 64, 128, 256, 512], name='batch_size')  # ใช้ Categorical บังคับให้สุ่มเฉพาะเลขกลุ่มนี้
+    Categorical([64, 128, 256, 512], name='batch_size')
 ]
 
-stopper = TargetScoreStopper(target_score=TARGET_RMSE)
+print(f"🚀 เริ่มต้น GBRT Tuning...")
+# 🌟 ใช้ gbrt_minimize เพื่อให้ตรงตามคำสั่ง "Gradient Based Tuning"
+result = gbrt_minimize(objective, search_space, n_calls=MAX_CALLS, base_estimator=gbrt_base, random_state=42)
 
-print(f"กำลังเริ่มให้ GBRT จูน 6 พารามิเตอร์... (รอบสูงสุด: {MAX_CALLS}, เป้าหมาย RMSE: <= {TARGET_RMSE})")
-result = forest_minimize(objective, search_space, n_calls=MAX_CALLS, callback=[stopper], random_state=42)
+best_params = {
+    "n_layers": int(result.x[0]), "n_neurons": int(result.x[1]),
+    "lr": float(result.x[2]), "dropout_rate": float(result.x[3]),
+    "weight_decay": float(result.x[4]), "batch_size": int(result.x[5])
+}
 
-print("\n=== ผลการจูนเสร็จสิ้น ===")
-print(f"ค่าที่ดีที่สุด (Layers, Neurons, LR, Dropout, WeightDecay, BatchSize): {result.x}")
-print(f"ค่า RMSE ที่ต่ำที่สุดที่ทำได้: {result.fun:.4f}")
+param_path = BASE_DIR / "GBRT" / "gbrt_best_params.json"
+with open(param_path, 'w') as f:
+    json.dump(best_params, f, indent=4)
+
+print(f"\n✅ สำเร็จ! RMSE ต่ำสุดจากการจูน: {result.fun:.4f}")
