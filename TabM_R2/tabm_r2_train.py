@@ -163,7 +163,7 @@ print("=========================================")
 
 results_file = BASE_DIR / "TabM_R2" / "tabm_final_results.json" # เซฟทับชื่อเดิมเพื่อให้ main.py อ่านง่าย
 final_results = {
-    "model_name": "TabM + Piecewise Linear Embeddings",
+    "model_name": "TabM + Linear Embeddings",
     "test_rmse": float(final_test_rmse),
     "test_r2": float(final_test_r2)
 }

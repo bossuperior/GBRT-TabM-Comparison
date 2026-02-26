@@ -1,5 +1,5 @@
 {
-    "model_name": "TabM + Piecewise Linear Embeddings",
+    "model_name": "TabM + Linear Embeddings",
     "test_rmse": 0.45260832367258474,
     "test_r2": 0.8428977131843567
 }

@@ -133,7 +133,7 @@ print(f"\n🏆 [FINAL] RMSE: {test_rmse:.4f} | R2: {test_r2:.4f}")
 # บันทึกไฟล์ผลลัพธ์ (แก้ชื่อไฟล์ไม่ให้ทับกับ TabM)
 results_file = MODEL_DIR / "mlp_gbrt_final_results.json"
 final_results = {
-    "model_name": "MLP + GBRT Leaf Encoding",
+    "model_name": "MLP + GBRT",
     "test_rmse": float(test_rmse),
     "test_r2": float(test_r2)
 }
