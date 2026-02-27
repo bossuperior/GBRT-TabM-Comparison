@@ -1,0 +1,18 @@
+🏠 California Housing: Model Performance Comparison
+==================================================
+
+Metric: RMSE
+  - GBRT (MLP): 0.4814
+  - TabM:       0.4526
+  >> Winner:    TabM
+
+Metric: MAE
+  - GBRT (MLP): 0.3259
+  - TabM:       0.3024
+  >> Winner:    TabM
+
+Metric: R-squared
+  - GBRT (MLP): 0.8223
+  - TabM:       0.8429
+  >> Winner:    TabM
+
