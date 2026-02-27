@@ -1,0 +1,10 @@
+numpy
+gdown
+torch
+torchvision
+torchaudio
+tabm
+scikit-optimize
+scikit-learn
+optuna
+joblib

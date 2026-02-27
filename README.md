@@ -11,3 +11,33 @@
 - 6652300371 นายเฉลิมพล บรรณารรักษ์ 
 - 6652300770 นางสาวอารีรัตน์ อู่ทรัพย์ 
 - 6652300931 นายคมกฤษณ์ ตังตติยภัทร์  
+
+## Dataset Setup – California (TabM format split)
+
+โปรเจกต์นี้ใช้ California Housing Dataset (TabM-prepared split) เป็น dataset กลางสำหรับทุกโมเดล เพื่อให้การเปรียบเทียบผลลัพธ์ fair และใช้ train/validation/test split เดียวกันทั้งหมด
+
+### การเตรียม Dataset (ทำครั้งแรกครั้งเดียวต่อเครื่อง)
+ก่อนเริ่มทำโมเดล ทุกคนในทีมต้องเตรียม dataset ตามขั้นตอนด้านล่างนี้
+
+#### 1) ติดตั้ง dependency ที่จำเป็น
+```bash
+pip install -r requirements.txt
+```
+#### 2) ดาวน์โหลดและแตกไฟล์ Dataset
+ที่ root ของโปรเจกต์ ให้รันคำสั่ง:
+```bash
+python scripts/setup_california_data.py
+```
+สคริปต์นี้จะดำเนินการดังนี้โดยอัตโนมัติ:
+
+- ตรวจสอบว่าไฟล์ที่จำเป็นครบถ้วน
+- ตรวจสอบความถูกต้องของ shape (sanity check)
+
+หากสำเร็จจะปรากฏข้อความลักษณะดังนี้:
+[OK] California dataset is ready at: data/california
+[PASS] sanity checks
+
+#### 3) วิธีโหลด Dataset เข้าโมเดล
+ให้ใช้ loader ที่เตรียมไว้ใน data_utils.py
+
+  หมายเหตุ: Dataset นี้ใช้ split เดียวกับงานวิจัยของ TabM เพื่อให้การ Benchmark มีความถูกต้องและสามารถเปรียบเทียบโมเดลได้อย่างเป็นมาตรฐานเดียวกัน
