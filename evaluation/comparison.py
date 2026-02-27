@@ -28,7 +28,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 try:
     from GBRT.gbrt_model import GBRTModel 
 except ImportError as e:
-    print(f"❌ Error: ไม่สามารถ Import โมเดลได้ ตรวจสอบชื่อไฟล์และโฟลเดอร์: {e}")
+    print(f"Error: ไม่สามารถ Import โมเดลได้ ตรวจสอบชื่อไฟล์และโฟลเดอร์: {e}")
     sys.exit(1)
 
 # =====================================================================
@@ -49,7 +49,7 @@ def save_results_and_plot(gbrt_metrics, tabm_metrics, save_dir):
     # --- บันทึกผลเป็นไฟล์ Text ---
     txt_path = os.path.join(save_dir, "model_comparison_results.txt")
     with open(txt_path, "w", encoding="utf-8") as f:
-        f.write("🏠 California Housing: Model Performance Comparison\n")
+        f.write("California Housing: Model Performance Comparison\n")
         f.write("="*50 + "\n\n")
         
         for name, g_val, t_val in zip(metrics_names, gbrt_metrics, tabm_metrics):
@@ -85,7 +85,7 @@ def save_results_and_plot(gbrt_metrics, tabm_metrics, save_dir):
 # 4. Main Execution
 # =====================================================================
 if __name__ == "__main__":
-    print(f"🚀 เริ่มต้นกระบวนการ Evaluation (Device: {device})")
+    print(f"เริ่มต้นกระบวนการ Evaluation (Device: {device})")
 
     # --- โหลดข้อมูล (Case Sensitive ตามรูปภาพ) ---
     data_dir = os.path.join(PROJECT_ROOT, "data", "california")
@@ -93,9 +93,9 @@ if __name__ == "__main__":
         X_test = np.load(os.path.join(data_dir, "X_num_test.npy"))
         y_test_real = np.load(os.path.join(data_dir, "Y_test.npy")).ravel()
         X_test_tensor = torch.tensor(X_test, dtype=torch.float32).to(device)
-        print(f"✅ โหลดข้อมูลสำเร็จ: {X_test.shape}")
+        print(f"โหลดข้อมูลสำเร็จ: {X_test.shape}")
     except FileNotFoundError as e:
-        print(f"❌ Error: ไม่พบไฟล์ข้อมูล .npy: {e}")
+        print(f"Error: ไม่พบไฟล์ข้อมูล .npy: {e}")
         sys.exit(1)
 
     print("-> กำลังโหลด GBRT (Hybrid) Model...")
@@ -110,7 +110,7 @@ if __name__ == "__main__":
         N_NEURONS = gbrt_params["n_neurons"]
         DROPOUT_RATE = gbrt_params.get("dropout_rate", 0.1)
     except FileNotFoundError:
-        print("⚠️ ไม่พบไฟล์ JSON ของ GBRT ใช้ค่าที่เห็นจาก Error...")
+        print("ไม่พบไฟล์ JSON ของ GBRT ใช้ค่าที่เห็นจาก Error...")
         N_LAYERS, N_NEURONS, DROPOUT_RATE = 2, 504, 0.1
 
     # 2. โหลดตัวแปลงข้อมูล (GBRT & Encoder)
@@ -148,14 +148,14 @@ if __name__ == "__main__":
         BEST_N_BINS = best_params["n_bins"]              # <-- เพิ่มบรรทัดนี้
         BEST_D_EMBEDDING = best_params["d_embedding"]    # <-- เพิ่มบรรทัดนี้
     except FileNotFoundError:
-        print("⚠️ ไม่พบไฟล์ JSON ของ TabM ใช้ค่า Default")
+        print("ไม่พบไฟล์ JSON ของ TabM ใช้ค่า Default")
         BEST_N_BLOCKS, BEST_D_BLOCK, BEST_DROPOUT = 3, 256, 0.1
         BEST_N_BINS, BEST_D_EMBEDDING = 32, 16           # <-- ตั้งค่าเริ่มต้นเผื่อไว้
 
     K_ENSEMBLE = 32
 
     
-    # ⚠️ สำคัญมาก: ต้องโหลด X_train เพื่อมาคำนวณ bins ให้เหมือนตอนเทรนเป๊ะๆ
+    # สำคัญมาก: ต้องโหลด X_train เพื่อมาคำนวณ bins ให้เหมือนตอนเทรนเป๊ะๆ
     X_train_raw = np.load(os.path.join(data_dir, "X_num_train.npy"))
     X_train_tensor_for_bins = torch.tensor(X_train_raw, dtype=torch.float32)
     bins = rtdl_num_embeddings.compute_bins(X_train_tensor_for_bins, n_bins=BEST_N_BINS)
@@ -186,12 +186,12 @@ if __name__ == "__main__":
         tabm.LinearEnsemble(BEST_D_BLOCK, 1, k=K_ENSEMBLE)
     ).to(device)
 
-    # ⚠️ โหลดไฟล์โมเดลชื่อใหม่ (tabm_model.pt) ตามที่เซฟในไฟล์เทรน
+    # โหลดไฟล์โมเดลชื่อใหม่ (tabm_model.pt) ตามที่เซฟในไฟล์เทรน
     tabm_path = os.path.join(PROJECT_ROOT, "TabM_R2", "tabm_model.pt")
     tabm_model.load_state_dict(torch.load(tabm_path, map_location=device))
     tabm_model.eval()
 
-    print("🔮 กำลังทำการพยากรณ์...")
+    print(" กำลังทำการพยากรณ์...")
     with torch.no_grad():
         # GBRT Prediction (ใช้ข้อมูลที่แปลงร่างเป็น 769 คอลัมน์แล้ว)
         y_pred_gbrt = gbrt_model(X_test_gbrt_tensor).cpu().numpy().flatten()
@@ -212,6 +212,6 @@ if __name__ == "__main__":
     save_results_and_plot(gbrt_res, tabm_res, eval_dir)
 
     print("\n" + "="*30)
-    print(f"✨ เสร็จสมบูรณ์!")
-    print(f"📊 ผลลัพธ์ถูกบันทึกไว้ใน: {eval_dir}")
+    print(f"เสร็จสมบูรณ์!")
+    print(f"ผลลัพธ์ถูกบันทึกไว้ใน: {eval_dir}")
     print("="*30)

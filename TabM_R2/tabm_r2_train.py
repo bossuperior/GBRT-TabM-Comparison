@@ -43,16 +43,16 @@ X_test = torch.tensor(np.load(DATA_DIR / "X_num_test.npy")).float()
 y_test_np = np.load(DATA_DIR / "Y_test.npy")
 
 # ==========================================
-# 2. 🌟 โหลดพารามิเตอร์อัตโนมัติจาก JSON 🌟
+# 2. โหลดพารามิเตอร์อัตโนมัติจาก JSON
 # ==========================================
 json_path = BASE_DIR / "TabM_R2" / "tabm_best_params.json"
 
 try:
     with open(json_path, 'r') as f:
         best_params = json.load(f)
-    print(f"✅ โหลด Hyperparameters สำเร็จ: {best_params}")
+    print(f"โหลด Hyperparameters สำเร็จ: {best_params}")
 except FileNotFoundError:
-    print(f"❌ ไม่พบไฟล์ {json_path} กรุณารัน Tuner ก่อน")
+    print(f"ไม่พบไฟล์ {json_path} กรุณารัน Tuner ก่อน")
 
 BEST_N_BLOCKS = best_params["n_blocks"]
 BEST_D_BLOCK = best_params["d_block"]
@@ -104,7 +104,7 @@ criterion = nn.MSELoss()
 
 best_val_loss = float('inf')
 best_model_path = BASE_DIR / "TabM_R2" / "tabm_model.pt"
-print(f"🚀 เริ่มฝึก TabM Model (สูงสุด {MAX_EPOCHS} Epochs)...")
+print(f"เริ่มฝึก TabM Model (สูงสุด {MAX_EPOCHS} Epochs)...")
 
 for epoch in range(MAX_EPOCHS):
     model.train()
@@ -138,7 +138,7 @@ for epoch in range(MAX_EPOCHS):
         epochs_no_improve += 1
 
     if epochs_no_improve >= PATIENCE:
-        print(f"\n🛑 No score improve Early Stopping ที่รอบ {epoch + 1}")
+        print(f"\nNo score improve Early Stopping ที่รอบ {epoch + 1}")
         break
 
 # ==========================================
@@ -156,7 +156,7 @@ with torch.no_grad():
     final_test_r2 = r2_score(y_test_np, final_test_pred)
 
 print("\n=========================================")
-print(f"🏆 ผลการวัดประสิทธิภาพ TabM Model (TEST SET)")
+print(f"ผลการวัดประสิทธิภาพ TabM Model (TEST SET)")
 print(f"RMSE: {final_test_rmse:.4f}")
 print(f"R² Score: {final_test_r2:.4f}")
 print("=========================================")

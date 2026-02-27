@@ -12,7 +12,7 @@ import tabm
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"🖥️ [Tuner Status] เริ่มจูน TabM Model บน: {device}")
+print(f"[Tuner Status] เริ่มจูน TabM Model บน: {device}")
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data" / "california"
@@ -40,7 +40,7 @@ def objective(trial):
     dropout = trial.suggest_float("dropout", 0.0, 0.5)
     batch_size = trial.suggest_categorical("batch_size", [128, 256, 512])
 
-    # 🌟 พารามิเตอร์ใหม่สำหรับ Embeddings 🌟
+    # พารามิเตอร์ใหม่สำหรับ Embeddings
     n_bins = trial.suggest_int("n_bins", 2, 128)
     d_embedding = trial.suggest_int("d_embedding", 8, 32, step=4)
 
@@ -99,7 +99,7 @@ def objective(trial):
         val_rmse = np.sqrt(mean_squared_error(y_val_np, final_val_pred))
 
     iteration_count = trial.number + 1
-    print(f"⏳ รอบ {iteration_count:2d}: layers={n_blocks}, neurons={d_block:4d}, bins={n_bins}, d_emb={d_embedding}, lr={lr:.5f} -> RMSE: {val_rmse:.4f}")
+    print(f"รอบ {iteration_count:2d}: layers={n_blocks}, neurons={d_block:4d}, bins={n_bins}, d_emb={d_embedding}, lr={lr:.5f} -> RMSE: {val_rmse:.4f}")
 
     return val_rmse
 
@@ -107,13 +107,13 @@ def objective(trial):
 # 3. รัน Optimize และบันทึก
 # ==========================================
 if __name__ == "__main__":
-    print("🚀 เริ่มการจูน TabM Model (50 รอบ)...\n")
+    print("เริ่มการจูน TabM Model (50 รอบ)...\n")
 
     study = optuna.create_study(direction="minimize")
     study.optimize(objective, n_trials=50)
 
-    print("\n🎉 === สรุปผลการจูน TabM Model ===")
-    print(f"🏆 RMSE ที่ดีที่สุด: {study.best_value:.4f}")
+    print("\n=== สรุปผลการจูน TabM Model ===")
+    print(f"RMSE ที่ดีที่สุด: {study.best_value:.4f}")
 
     tabm_dir = BASE_DIR / "TabM_R2"
 
@@ -121,4 +121,4 @@ if __name__ == "__main__":
     with open(best_params_file, 'w') as f:
         json.dump(study.best_params, f, indent=4)
 
-    print(f"✅ บันทึก Hyperparameters ({best_params_file}) เรียบร้อยแล้ว!")
+    print(f"บันทึก Hyperparameters ({best_params_file}) เรียบร้อยแล้ว!")

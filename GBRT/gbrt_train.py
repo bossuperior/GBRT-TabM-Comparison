@@ -33,9 +33,9 @@ print(f"🖥️ [Train Status] สตาร์ทเครื่องยนต�
 try:
     with open(param_path, 'r') as f:
         best_params = json.load(f)
-    print(f"✅ โหลดพารามิเตอร์จาก Tuner สำเร็จ: {best_params}")
+    print(f"โหลดพารามิเตอร์จาก Tuner สำเร็จ: {best_params}")
 except FileNotFoundError:
-    print(f"❌ ไม่พบไฟล์ {param_path}! จะใช้ค่า Default แทน")
+    print(f"ไม่พบไฟล์ {param_path}! จะใช้ค่า Default แทน")
     best_params = {"n_layers": 2, "n_neurons": 64, "lr": 0.001, "dropout_rate": 0.1, "weight_decay": 1e-4, "batch_size": 128}
 
 # ==========================================
@@ -51,7 +51,7 @@ y_test_raw = np.load(DATA_DIR / 'Y_test.npy').ravel()
 # แบ่งส่วน GBRT Extractor
 X_tr_gbrt, X_tr_mlp, y_tr_gbrt, y_tr_mlp = train_test_split(X_train_raw, y_train_raw, test_size=0.5, random_state=42)
 
-print("🌲 Step 1: Training GBRT Extractor...")
+print("Step 1: Training GBRT Extractor...")
 gbrt = GradientBoostingRegressor(n_estimators=100, max_depth=3, random_state=42)
 gbrt.fit(X_tr_gbrt, y_tr_gbrt)
 
@@ -87,7 +87,7 @@ criterion = nn.MSELoss()
 # ==========================================
 best_model_path = MODEL_DIR / "mlp_gbrt_model.pt"
 
-print(f"🧠 Step 2: Training MLP with Early Stopping (Max {MAX_EPOCHS} Epochs)...")
+print(f"Step 2: Training MLP with Early Stopping (Max {MAX_EPOCHS} Epochs)...")
 for epoch in range(MAX_EPOCHS):
     model.train()
     for batch_X, batch_y in train_loader:
@@ -114,7 +114,7 @@ for epoch in range(MAX_EPOCHS):
         epochs_no_improve += 1
 
     if epochs_no_improve >= PATIENCE:
-        print(f"🛑 Early Stopping at epoch {epoch+1}")
+        print(f"Early Stopping at epoch {epoch+1}")
         break
 
 # ==========================================
@@ -128,7 +128,7 @@ with torch.no_grad():
 test_rmse = np.sqrt(mean_squared_error(y_test_raw, y_pred))
 test_r2 = r2_score(y_test_raw, y_pred)
 
-print(f"\n🏆 [FINAL] RMSE: {test_rmse:.4f} | R2: {test_r2:.4f}")
+print(f"\n[FINAL] RMSE: {test_rmse:.4f} | R2: {test_r2:.4f}")
 
 # บันทึกไฟล์ผลลัพธ์ (แก้ชื่อไฟล์ไม่ให้ทับกับ TabM)
 results_file = MODEL_DIR / "mlp_gbrt_final_results.json"

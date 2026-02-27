@@ -28,7 +28,7 @@ y_val = np.load(DATA_DIR / "Y_val.npy").ravel()
 # แบ่งส่วน Hybrid เพื่อป้องกัน Data Leakage
 X_tr_gbrt, X_tr_mlp, y_tr_gbrt, y_tr_mlp = train_test_split(X_train_full, y_train_full, test_size=0.5, random_state=42)
 
-print("🌲 กำลังเตรียม Feature Extraction สำหรับ Hybrid MLP...")
+print("กำลังเตรียม Feature Extraction สำหรับ Hybrid MLP...")
 gbrt_ext = GradientBoostingRegressor(n_estimators=100, max_depth=3, random_state=42)
 gbrt_ext.fit(X_tr_gbrt, y_tr_gbrt)
 
@@ -89,7 +89,7 @@ def objective(params):
         rmse = np.sqrt(mean_squared_error(y_val, preds))
 
     print(
-        f"⏳ รอบ {iteration_count:2d}: layers={n_layers}, neurons={n_neurons:3d}, lr={lr:.5f}, batch={batch_size:3d} -> RMSE: {rmse:.4f}")
+        f"รอบ {iteration_count:2d}: layers={n_layers}, neurons={n_neurons:3d}, lr={lr:.5f}, batch={batch_size:3d} -> RMSE: {rmse:.4f}")
     return rmse
 
 # --- Search Space & Tuning ---
@@ -102,8 +102,8 @@ search_space = [
     Categorical([64, 128, 256, 512], name='batch_size')
 ]
 
-print(f"🚀 เริ่มต้น GBRT Tuning...")
-# 🌟 ใช้ gbrt_minimize เพื่อให้ตรงตามคำสั่ง "Gradient Based Tuning"
+print(f"เริ่มต้น GBRT Tuning...")
+# ใช้ gbrt_minimize เพื่อให้ตรงตามคำสั่ง "Gradient Based Tuning"
 result = gbrt_minimize(objective, search_space, n_calls=MAX_CALLS, base_estimator=gbrt_base, random_state=42)
 
 best_params = {
@@ -116,4 +116,4 @@ param_path = BASE_DIR / "GBRT" / "gbrt_best_params.json"
 with open(param_path, 'w') as f:
     json.dump(best_params, f, indent=4)
 
-print(f"\n✅ สำเร็จ! RMSE ต่ำสุดจากการจูน: {result.fun:.4f}")
+print(f"\nสำเร็จ! RMSE ต่ำสุดจากการจูน: {result.fun:.4f}")
